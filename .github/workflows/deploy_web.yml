@@ -1,0 +1,41 @@
+name: Deploy Web to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+
+    - name: Install dependencies
+      working-directory: ./ui_app
+      run: flutter pub get
+
+    - name: Setup Web SQLite WASM
+      working-directory: ./ui_app
+      run: flutter pub run sqflite_common_ffi_web:setup --force
+
+    - name: Build Web
+      working-directory: ./ui_app
+      run: flutter build web --release --base-href /DigiMinuto/
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./ui_app/build/web
+        force_orphan: true
