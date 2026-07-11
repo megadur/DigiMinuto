@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:core_engine/core_engine.dart';
 import '../services/app_services.dart';
 import 'creation_screen.dart';
 import 'scanner_screen.dart';
