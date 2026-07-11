@@ -1,11 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../services/app_services.dart';
 import 'creation_screen.dart';
 import 'scanner_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  int _balance = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBalance();
+  }
+
+  Future<void> _loadBalance() async {
+    final identity = AppServices.instance.currentIdentity;
+    final tokens = await AppServices.instance.tokenRepository.getTokensByCreatorAndYear(identity.publicKey, DateTime.now().year);
+    int sum = tokens.fold(0, (s, t) => s + t.amount);
+    setState(() {
+      _balance = sum;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +63,7 @@ class DashboardScreen extends StatelessWidget {
             children: [
               _buildBalanceCard(),
               const SizedBox(height: 30),
-              _buildActionButtons(),
+              _buildActionButtons(context),
               const SizedBox(height: 30),
               Text(
                 'Letzte Transaktionen',
@@ -94,7 +117,7 @@ class DashboardScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '450',
+                '$_balance',
                 style: GoogleFonts.outfit(
                   color: Colors.white,
                   fontSize: 48,
@@ -131,7 +154,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -140,7 +163,9 @@ class DashboardScreen extends StatelessWidget {
           icon: Icons.add_circle_outline,
           color: const Color(0xFF6366F1), // Indigo
           onTap: () {
-            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreationScreen()));
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreationScreen())).then((_) {
+              _loadBalance();
+            });
           },
         ),
         _ActionButton(

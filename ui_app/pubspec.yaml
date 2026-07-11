@@ -39,6 +39,11 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.2.0
   google_fonts: ^8.1.0
+  sqflite: ^2.4.3
+  sqflite_common_ffi: ^2.4.2
+  path: ^1.9.1
+  shared_preferences: ^2.5.5
+  flutter_secure_storage: ^10.3.1
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import '../services/app_services.dart';
 
 class CreationScreen extends StatefulWidget {
   const CreationScreen({super.key});
@@ -11,8 +13,7 @@ class CreationScreen extends StatefulWidget {
 class _CreationScreenState extends State<CreationScreen> {
   final TextEditingController _amountController = TextEditingController();
 
-  void _onCreate() {
-    // TODO: Nutze CoreEngine LedgerService um einen Pending-Token zu erstellen
+  void _onCreate() async {
     final amount = int.tryParse(_amountController.text) ?? 0;
     if (amount <= 0 || amount > 1800) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -21,24 +22,61 @@ class _CreationScreenState extends State<CreationScreen> {
       return;
     }
 
-    // Für jetzt zeigen wir nur einen Erfolg an
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: Text('Schöpfung initiiert', style: GoogleFonts.outfit(color: Colors.white)),
-        content: Text(
-          'Bitte lassen Sie diesen Vorgang nun von 2 Bürgen bestätigen (QR-Code).',
-          style: GoogleFonts.inter(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK', style: TextStyle(color: Colors.tealAccent)),
+    try {
+      final token = await AppServices.instance.ledgerService.createToken(
+        creator: AppServices.instance.currentIdentity,
+        amount: amount,
+      );
+
+      if (!mounted) return;
+
+      // Zeige Erfolg an
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: Text('Schöpfung initiiert', style: GoogleFonts.outfit(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Sie haben $amount Minutos geschöpft.\nLassen Sie diesen Code nun von 2 Bürgen scannen.',
+                style: GoogleFonts.inter(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: QrImageView(
+                  data: 'digiminuto:guarantee:${token.id}:${token.creatorPubKey}',
+                  version: QrVersions.auto,
+                  size: 200.0,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Token-ID: ${token.id.substring(0,8)}...',
+                style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close Dialog
+                Navigator.of(context).pop(); // Return to Dashboard
+              },
+              child: const Text('OK', style: TextStyle(color: Colors.tealAccent)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Fehler bei der Schöpfung: $e')),
+      );
+    }
   }
 
   @override
