@@ -1,5 +1,4 @@
-import 'package:sqflite/sqflite.dart' hide Transaction;
-import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:path/path.dart';
 import 'dart:io' show Platform;
@@ -7,7 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:core_engine/core_engine.dart';
 
-class SqfliteTransactionRepository implements TransactionRepository {
+class SqfliteContactRepository implements ContactRepository {
   Database? _db;
 
   Future<Database> get database async {
@@ -29,41 +28,49 @@ class SqfliteTransactionRepository implements TransactionRepository {
 
     return await databaseFactory.openDatabase(
       path,
-      options: OpenDatabaseOptions(version: 2),
+      options: OpenDatabaseOptions(version: 2), // schema is managed in token repo
     );
   }
 
   @override
-  Future<void> saveTransaction(Transaction transaction) async {
+  Future<void> saveContact(Contact contact) async {
     final db = await database;
     await db.insert(
-      'transactions',
-      transaction.toJson(),
+      'contacts',
+      contact.toJson(),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
   @override
-  Future<List<Transaction>> getTransactionsForToken(String tokenId) async {
+  Future<Contact?> getContactByPublicKey(String publicKey) async {
     final db = await database;
     final maps = await db.query(
-      'transactions',
-      where: 'tokenId = ?',
-      whereArgs: [tokenId],
-      orderBy: 'timestamp ASC',
+      'contacts',
+      where: 'publicKey = ?',
+      whereArgs: [publicKey],
     );
 
-    return maps.map((map) => Transaction.fromJson(map)).toList();
+    if (maps.isNotEmpty) {
+      return Contact.fromJson(maps.first);
+    }
+    return null;
   }
 
   @override
-  Future<List<Transaction>> getAllTransactions() async {
+  Future<List<Contact>> getAllContacts() async {
     final db = await database;
-    final maps = await db.query(
-      'transactions',
-      orderBy: 'timestamp DESC',
-    );
+    final maps = await db.query('contacts', orderBy: 'name ASC');
+    return maps.map((map) => Contact.fromJson(map)).toList();
+  }
 
-    return maps.map((map) => Transaction.fromJson(map)).toList();
+  @override
+  Future<void> deleteContact(String publicKey) async {
+    final db = await database;
+    await db.delete(
+      'contacts',
+      where: 'publicKey = ?',
+      whereArgs: [publicKey],
+    );
   }
 }

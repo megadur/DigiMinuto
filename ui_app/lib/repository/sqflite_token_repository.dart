@@ -30,7 +30,7 @@ class SqfliteTokenRepository implements TokenRepository {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
         onCreate: (db, version) async {
           // Token Tabelle
           await db.execute('''
@@ -45,7 +45,7 @@ class SqfliteTokenRepository implements TokenRepository {
             )
           ''');
 
-          // Transaction Tabelle (falls wir sie später brauchen)
+          // Transaction Tabelle
           await db.execute('''
             CREATE TABLE transactions (
               id TEXT PRIMARY KEY,
@@ -56,6 +56,24 @@ class SqfliteTokenRepository implements TokenRepository {
               signature TEXT NOT NULL
             )
           ''');
+
+          // Contacts Tabelle
+          await db.execute('''
+            CREATE TABLE contacts (
+              publicKey TEXT PRIMARY KEY,
+              name TEXT NOT NULL
+            )
+          ''');
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            await db.execute('''
+              CREATE TABLE contacts (
+                publicKey TEXT PRIMARY KEY,
+                name TEXT NOT NULL
+              )
+            ''');
+          }
         },
       ),
     );

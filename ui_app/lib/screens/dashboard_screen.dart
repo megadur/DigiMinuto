@@ -7,6 +7,7 @@ import 'creation_screen.dart';
 import 'scanner_screen.dart';
 import 'guarantee_screen.dart';
 import 'send_screen.dart';
+import 'profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,19 +18,41 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _balance = 0;
+  Map<String, String> _contactNames = {};
+  List<Transaction> _recentTransactions = [];
 
   @override
   void initState() {
     super.initState();
     _loadBalance();
+    _loadContacts();
+  }
+
+  Future<void> _loadContacts() async {
+    final contacts = await AppServices.instance.contactRepository.getAllContacts();
+    setState(() {
+      _contactNames = {for (var c in contacts) c.publicKey: c.name};
+    });
+  }
+
+  String _resolveName(String pubKey) {
+    if (pubKey == AppServices.instance.currentIdentity.publicKey) {
+      return 'Mir';
+    }
+    return _contactNames[pubKey] ?? '${pubKey.substring(0, 8)}...';
   }
 
   Future<void> _loadBalance() async {
     final identity = AppServices.instance.currentIdentity;
     final tokens = await AppServices.instance.ledgerService.getOwnedTokens(identity.publicKey);
     int sum = tokens.fold(0, (s, t) => s + t.amount);
+    
+    final allTxs = await AppServices.instance.transactionRepository.getAllTransactions();
+    allTxs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    
     setState(() {
       _balance = sum;
+      _recentTransactions = allTxs.take(5).toList();
     });
   }
 
@@ -171,7 +194,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
       }
+    } else if (data.startsWith('digiminuto:pubkey:')) {
+      final parts = data.split(':');
+      if (parts.length >= 3) {
+        _promptSaveContact(parts[2]);
+      }
     }
+  }
+
+  Future<void> _promptSaveContact(String pubKey) async {
+    final existing = await AppServices.instance.contactRepository.getContactByPublicKey(pubKey);
+    final nameController = TextEditingController(text: existing?.name ?? '');
+
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(existing == null ? 'Neuen Kontakt speichern' : 'Kontakt bearbeiten', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Möchten Sie diesen Schlüssel speichern?', style: GoogleFonts.inter()),
+              const SizedBox(height: 10),
+              SelectableText(pubKey, style: GoogleFonts.robotoMono(fontSize: 10)),
+              const SizedBox(height: 20),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Name (z.B. Alice)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Abbrechen'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final name = nameController.text.trim();
+                if (name.isNotEmpty) {
+                  await AppServices.instance.contactRepository.saveContact(Contact(publicKey: pubKey, name: name));
+                  _loadContacts();
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kontakt gespeichert!')));
+                  }
+                }
+              },
+              child: const Text('Speichern'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -201,8 +278,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           IconButton(
             icon: Icon(Icons.qr_code_scanner, color: isDark ? Colors.tealAccent : Colors.teal),
+            onPressed: () async {
+              final result = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScannerScreen()));
+              if (result is String) {
+                _handleScanResult(result);
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.person, color: isDark ? Colors.tealAccent : Colors.teal),
             onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScannerScreen()));
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen())).then((_) {
+                _loadBalance();
+                _loadContacts();
+              });
             },
           )
         ],
@@ -347,9 +436,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildTransactionList(BuildContext context, Color textColor, bool isDark) {
-    // Placeholder für Transaktionen
+    if (_recentTransactions.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Text(
+            'Noch keine Transaktionen vorhanden.',
+            style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.6)),
+          ),
+        ),
+      );
+    }
+
     return Column(
-      children: List.generate(3, (index) {
+      children: _recentTransactions.map((tx) {
+        final isReceived = tx.receiverPubKey == AppServices.instance.currentIdentity.publicKey;
+        // Für den Demo-Code vereinfacht: Betrag müssen wir eigentlich aus dem Token holen.
+        // Wir zeigen hier stattdessen nur Sender/Empfänger an, und laden den Token-Betrag falls möglich.
+        // Ein echtes Ledger würde den Betrag mit in der tx speichern oder cachen.
+        
+        final counterpartPubKey = isReceived ? tx.senderPubKey : tx.receiverPubKey;
+        final name = _resolveName(counterpartPubKey);
+        
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
@@ -363,12 +471,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: index == 0 ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                  color: isReceived ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  index == 0 ? Icons.call_received : Icons.engineering,
-                  color: index == 0 ? Colors.greenAccent : Colors.orangeAccent,
+                  isReceived ? Icons.call_received : Icons.send,
+                  color: isReceived ? Colors.greenAccent : Colors.orangeAccent,
                 ),
               ),
               const SizedBox(width: 16),
@@ -377,14 +485,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      index == 0 ? 'Empfangen von Anna' : 'Bürgschaft geleistet',
+                      isReceived ? 'Empfangen von $name' : 'Gesendet an $name',
                       style: GoogleFonts.inter(
                         color: textColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
-                      'Heute, 14:30',
+                      '${tx.timestamp.day}.${tx.timestamp.month}.${tx.timestamp.year} ${tx.timestamp.hour}:${tx.timestamp.minute.toString().padLeft(2, '0')}',
                       style: GoogleFonts.inter(
                         color: textColor.withValues(alpha: 0.6),
                         fontSize: 12,
@@ -394,9 +502,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               Text(
-                index == 0 ? '+60' : '0',
+                'Token',
                 style: GoogleFonts.outfit(
-                  color: index == 0 ? (isDark ? Colors.greenAccent : Colors.green) : textColor.withValues(alpha: 0.8),
+                  color: isReceived ? (isDark ? Colors.greenAccent : Colors.green) : textColor.withValues(alpha: 0.8),
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),
@@ -404,7 +512,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         );
-      }),
+      }).toList(),
     );
   }
 }
