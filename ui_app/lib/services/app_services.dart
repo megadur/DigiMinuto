@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:core_engine/core_engine.dart';
 import '../repository/secure_identity_repository.dart';
 import '../repository/sqflite_token_repository.dart';
+import '../repository/sqflite_transaction_repository.dart';
 
 class AppServices {
   static final AppServices instance = AppServices._internal();
@@ -11,6 +12,7 @@ class AppServices {
   late final CryptoService cryptoService;
   late final SecureIdentityRepository identityRepository;
   late final SqfliteTokenRepository tokenRepository;
+  late final SqfliteTransactionRepository transactionRepository;
   late final LedgerService ledgerService;
   
   late Identity currentIdentity;
@@ -19,7 +21,8 @@ class AppServices {
     cryptoService = CryptoService();
     identityRepository = SecureIdentityRepository();
     tokenRepository = SqfliteTokenRepository();
-    ledgerService = LedgerService(tokenRepository, cryptoService);
+    transactionRepository = SqfliteTransactionRepository();
+    ledgerService = LedgerService(tokenRepository, transactionRepository, cryptoService);
 
     // Identität laden oder neu generieren
     var identity = await identityRepository.loadIdentity();

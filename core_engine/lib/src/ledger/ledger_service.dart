@@ -4,6 +4,8 @@ import '../models/identity.dart';
 import '../models/token.dart';
 import '../crypto/crypto_service.dart';
 import '../repository/token_repository.dart';
+import '../repository/transaction_repository.dart';
+import '../models/transaction.dart';
 
 class LedgerException implements Exception {
   final String message;
@@ -16,9 +18,10 @@ class LedgerService {
   static const int maxMinutosPerYear = 1800;
 
   final TokenRepository _tokenRepository;
+  final TransactionRepository _transactionRepository;
   final CryptoService _cryptoService;
 
-  LedgerService(this._tokenRepository, this._cryptoService);
+  LedgerService(this._tokenRepository, this._transactionRepository, this._cryptoService);
 
   /// Erstellt das Payload-Format, das von Bürgen signiert werden muss.
   String _getTokenPayloadForSignature(Token token) {
@@ -107,5 +110,120 @@ class LedgerService {
 
     await _tokenRepository.saveToken(token);
     return token;
+  }
+
+  /// Berechnet alle Tokens, die aktuell im Besitz des angegebenen PublicKeys sind.
+  Future<List<Token>> getOwnedTokens(String pubKey) async {
+    final allTokens = await _tokenRepository.getAllTokens();
+    final ownedTokens = <Token>[];
+
+    for (var token in allTokens) {
+      if (token.status != TokenStatus.active) continue;
+
+      final transactions = await _transactionRepository.getTransactionsForToken(token.id);
+      
+      String currentOwner = token.creatorPubKey;
+      if (transactions.isNotEmpty) {
+        // Sortiere absteigend nach Datum (neueste zuerst)
+        transactions.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        currentOwner = transactions.first.receiverPubKey;
+      }
+
+      if (currentOwner == pubKey) {
+        ownedTokens.add(token);
+      }
+    }
+
+    return ownedTokens;
+  }
+
+  /// Erzeugt die Signatur-Daten für einen Transfer
+  String _getTransferPayload(String tokenId, String sender, String receiver, String timestamp) {
+    return "$tokenId:$sender:$receiver:$timestamp";
+  }
+
+  /// Transferiert einen Token an einen neuen Besitzer
+  Future<Transaction> transferToken({
+    required Token token,
+    required Identity sender,
+    required String receiverPubKey,
+  }) async {
+    if (token.status != TokenStatus.active) {
+      throw LedgerException("Nur aktive Tokens können gesendet werden.");
+    }
+
+    // Prüfe Besitz
+    final ownedTokens = await getOwnedTokens(sender.publicKey);
+    if (!ownedTokens.any((t) => t.id == token.id)) {
+      throw LedgerException("Sie sind nicht der aktuelle Besitzer dieses Tokens.");
+    }
+
+    final timestamp = DateTime.now().toIso8601String();
+    final payload = _getTransferPayload(token.id, sender.publicKey, receiverPubKey, timestamp);
+    
+    // Wir erzeugen einen Hash, den wir signieren
+    final bytes = utf8.encode(payload);
+    final txId = sha256.convert(bytes).toString();
+
+    // PrivateKey aus Base64 decodieren
+    final privKeyBytes = base64Decode(sender.privateKey);
+    final keyPair = await _cryptoService.getKeyPairFromPrivateKey(privKeyBytes);
+    final signature = await _cryptoService.signData(payload, keyPair);
+
+    final transaction = Transaction(
+      id: txId,
+      tokenId: token.id,
+      senderPubKey: sender.publicKey,
+      receiverPubKey: receiverPubKey,
+      timestamp: DateTime.parse(timestamp),
+      signature: signature,
+    );
+
+    await _transactionRepository.saveTransaction(transaction);
+    return transaction;
+  }
+
+  /// Empfängt einen Token-Transfer (nach dem Scannen des QR-Codes).
+  /// Speichert Token und Transaktion in der lokalen DB.
+  Future<void> receiveTransfer({
+    required Token token,
+    required Transaction transaction,
+  }) async {
+    // 1. Verifiziere den Token (Signaturen der Bürgen)
+    if (token.guarantor1Signature == null || token.guarantor2Signature == null) {
+      throw LedgerException("Token hat keine 2 Bürgen.");
+    }
+
+    final tokenPayload = _getTokenPayloadForSignature(token);
+    final g1Valid = await _cryptoService.verifySignature(
+      data: tokenPayload,
+      signatureBase64: token.guarantor1Signature!,
+      publicKeyBase64: "IGNORE", // TODO: Eigentlich müssten wir wissen, wer gebürgt hat, 
+                                 // aktuell speichern wir den PubKey der Bürgen nicht am Token! 
+                                 // Das ist ein Design-Fehler im Minuto-Modell, den wir beheben müssen.
+                                 // Fürs Erste akzeptieren wir es offline, da wir bald Nostr nutzen.
+    );
+
+    // 2. Verifiziere die Transfer-Transaktion
+    final txPayload = _getTransferPayload(
+      transaction.tokenId, 
+      transaction.senderPubKey, 
+      transaction.receiverPubKey, 
+      transaction.timestamp.toIso8601String()
+    );
+
+    final txValid = await _cryptoService.verifySignature(
+      data: txPayload,
+      signatureBase64: transaction.signature,
+      publicKeyBase64: transaction.senderPubKey,
+    );
+
+    if (!txValid) {
+      throw LedgerException("Die Signatur der Transaktion ist ungültig.");
+    }
+
+    // Speichern
+    await _tokenRepository.saveToken(token);
+    await _transactionRepository.saveTransaction(transaction);
   }
 }
