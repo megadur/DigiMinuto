@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DigiMinuto App (Windows)",
+      "request": "launch",
+      "type": "dart",
+      "program": "ui_app/lib/main.dart",
+      "deviceId": "windows"
+    }
+  ]
+}
