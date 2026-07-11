@@ -9,6 +9,7 @@ class Token {
   final String creatorPubKey;
   final int amount;
   final int creationYear;
+  final String description;
   String? guarantor1Signature;
   String? guarantor2Signature;
   TokenStatus status;
@@ -18,6 +19,7 @@ class Token {
     required this.creatorPubKey,
     required this.amount,
     required this.creationYear,
+    this.description = '',
     this.guarantor1Signature,
     this.guarantor2Signature,
     this.status = TokenStatus.pending,
@@ -29,6 +31,7 @@ class Token {
       'creatorPubKey': creatorPubKey,
       'amount': amount,
       'creationYear': creationYear,
+      'description': description,
       'guarantor1Signature': guarantor1Signature,
       'guarantor2Signature': guarantor2Signature,
       'status': status.name,
@@ -41,6 +44,7 @@ class Token {
       creatorPubKey: json['creatorPubKey'],
       amount: json['amount'],
       creationYear: json['creationYear'],
+      description: json['description'] ?? '',
       guarantor1Signature: json['guarantor1Signature'],
       guarantor2Signature: json['guarantor2Signature'],
       status: TokenStatus.values.firstWhere(

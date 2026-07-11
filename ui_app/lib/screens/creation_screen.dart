@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:barcode_widget/barcode_widget.dart';
@@ -12,6 +13,7 @@ class CreationScreen extends StatefulWidget {
 
 class _CreationScreenState extends State<CreationScreen> {
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   bool _isProcessing = false;
 
   void _onCreate() async {
@@ -31,6 +33,7 @@ class _CreationScreenState extends State<CreationScreen> {
       final token = await AppServices.instance.ledgerService.createToken(
         creator: AppServices.instance.currentIdentity,
         amount: amount,
+        description: _descriptionController.text.trim(),
       );
 
       if (!mounted) return;
@@ -63,7 +66,7 @@ class _CreationScreenState extends State<CreationScreen> {
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
                 child: BarcodeWidget(
                   barcode: Barcode.qrCode(),
-                  data: 'digiminuto:guarantee:${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}',
+                  data: 'digiminuto:guarantee:${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}:${base64Encode(utf8.encode(token.description))}',
                   width: 200.0,
                   height: 200.0,
                   color: Colors.black,
@@ -141,6 +144,21 @@ class _CreationScreenState extends State<CreationScreen> {
                 suffixStyle: GoogleFonts.inter(color: Theme.of(context).brightness == Brightness.dark ? Colors.tealAccent : Colors.teal, fontSize: 18),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _descriptionController,
+              style: GoogleFonts.inter(color: textColor),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surface,
+                hintText: 'Notiz (z.B. Ersatz für Papier-Minuto)',
+                hintStyle: GoogleFonts.inter(color: textColor.withValues(alpha: 0.3)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),

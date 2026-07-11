@@ -4,6 +4,9 @@ import 'package:core_engine/src/models/token.dart';
 import 'package:core_engine/src/crypto/crypto_service.dart';
 import 'package:core_engine/src/ledger/ledger_service.dart';
 import 'package:core_engine/src/repository/token_repository.dart';
+import 'package:core_engine/src/repository/transaction_repository.dart';
+import 'package:core_engine/src/models/transaction.dart';
+import 'dart:convert';
 
 class InMemoryTokenRepository implements TokenRepository {
   final Map<String, Token> _tokens = {};
@@ -11,6 +14,11 @@ class InMemoryTokenRepository implements TokenRepository {
   @override
   Future<Token?> getTokenById(String id) async {
     return _tokens[id];
+  }
+
+  @override
+  Future<List<Token>> getAllTokens() async {
+    return _tokens.values.toList();
   }
 
   @override
@@ -24,15 +32,36 @@ class InMemoryTokenRepository implements TokenRepository {
   }
 }
 
+class InMemoryTransactionRepository implements TransactionRepository {
+  final List<Transaction> _transactions = [];
+
+  @override
+  Future<void> saveTransaction(Transaction transaction) async {
+    _transactions.add(transaction);
+  }
+
+  @override
+  Future<List<Transaction>> getTransactionsForToken(String tokenId) async {
+    return _transactions.where((t) => t.tokenId == tokenId).toList();
+  }
+
+  @override
+  Future<List<Transaction>> getAllTransactions() async {
+    return _transactions;
+  }
+}
+
 void main() {
   late CryptoService cryptoService;
   late TokenRepository repository;
+  late TransactionRepository txRepository;
   late LedgerService ledger;
 
   setUp(() {
     cryptoService = CryptoService();
     repository = InMemoryTokenRepository();
-    ledger = LedgerService(repository, cryptoService);
+    txRepository = InMemoryTransactionRepository();
+    ledger = LedgerService(repository, txRepository, cryptoService);
   });
 
   test('Token Schöpfung unter Limit erfolgreich', () async {
@@ -67,7 +96,8 @@ void main() {
     // Bürge 1
     final g1KeyPair = await cryptoService.generateKeyPair();
     final g1PubBase64 = await cryptoService.getPublicKeyBase64(g1KeyPair);
-    final payload = "${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}";
+    final descBase64 = base64Encode(utf8.encode(token.description));
+    final payload = "${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}:$descBase64";
     final sig1 = await cryptoService.signData(payload, g1KeyPair);
 
     await ledger.addGuarantorSignature(

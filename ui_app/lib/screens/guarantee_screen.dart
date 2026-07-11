@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:core_engine/core_engine.dart';
+import 'dart:convert';
 import '../services/app_services.dart';
 
 class GuaranteeScreen extends StatefulWidget {
@@ -9,6 +10,7 @@ class GuaranteeScreen extends StatefulWidget {
   final String creatorPubKey;
   final int amount;
   final int creationYear;
+  final String description;
 
   const GuaranteeScreen({
     super.key,
@@ -16,6 +18,7 @@ class GuaranteeScreen extends StatefulWidget {
     required this.creatorPubKey,
     required this.amount,
     required this.creationYear,
+    this.description = '',
   });
 
   @override
@@ -46,7 +49,8 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
       }
 
       // 1. Token-Payload rekonstruieren
-      final payload = "${widget.tokenId}:${widget.creatorPubKey}:${widget.amount}:${widget.creationYear}";
+      final descBase64 = base64Encode(utf8.encode(widget.description));
+      final payload = "${widget.tokenId}:${widget.creatorPubKey}:${widget.amount}:${widget.creationYear}:$descBase64";
       
       // 2. KeyPair laden und signieren
       final keyPair = await appServices.cryptoService.loadKeyPairFromBase64(
@@ -61,6 +65,7 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
         creatorPubKey: widget.creatorPubKey,
         amount: widget.amount,
         creationYear: widget.creationYear,
+        description: widget.description,
         status: TokenStatus.pending,
       );
       token.guarantor1Signature = signatureBase64;
@@ -119,6 +124,24 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8), fontSize: 16),
         ),
+        if (widget.description.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Notiz: "${widget.description}"',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: textColor.withValues(alpha: 0.9),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 32),
         if (_error != null)
           Padding(

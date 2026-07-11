@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../main.dart';
 import 'package:core_engine/core_engine.dart';
+import 'dart:convert';
 import '../services/app_services.dart';
 import 'creation_screen.dart';
 import 'scanner_screen.dart';
@@ -64,6 +65,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final creatorPubKey = parts[3];
         final amount = int.tryParse(parts[4]) ?? 0;
         final year = int.tryParse(parts[5]) ?? 0;
+        final descBase64 = parts.length >= 7 ? parts[6] : '';
+        String description = '';
+        if (descBase64.isNotEmpty) {
+          try {
+            description = utf8.decode(base64Decode(descBase64));
+          } catch (_) {}
+        }
         
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -72,6 +80,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               creatorPubKey: creatorPubKey,
               amount: amount,
               creationYear: year,
+              description: description,
             ),
           ),
         ).then((_) => _loadBalance());

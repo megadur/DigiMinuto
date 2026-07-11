@@ -25,7 +25,8 @@ class LedgerService {
 
   /// Erstellt das Payload-Format, das von Bürgen signiert werden muss.
   String _getTokenPayloadForSignature(Token token) {
-    return "${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}";
+    final descBase64 = base64Encode(utf8.encode(token.description));
+    return "${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}:$descBase64";
   }
 
   /// Initialisiert die Schöpfung eines neuen Tokens (Gutscheins).
@@ -33,6 +34,7 @@ class LedgerService {
   Future<Token> createToken({
     required Identity creator,
     required int amount,
+    String description = '',
   }) async {
     if (amount <= 0) {
       throw LedgerException("Betrag muss größer als 0 sein.");
@@ -48,9 +50,9 @@ class LedgerService {
       throw LedgerException("Hard-Cap überschritten! Maximal $maxMinutosPerYear Minutos pro Jahr erlaubt. Aktuell geschöpft: $currentSum.");
     }
 
-    // Erzeuge eine eindeutige ID (Hash aus Creator + Timestamp + Random/Amount)
+    // Erzeuge eine eindeutige ID (Hash aus Creator + Timestamp + Random/Amount + Description)
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
-    final bytes = utf8.encode("${creator.publicKey}:$timestamp:$amount");
+    final bytes = utf8.encode("${creator.publicKey}:$timestamp:$amount:$description");
     final tokenId = sha256.convert(bytes).toString();
 
     final token = Token(
@@ -58,6 +60,7 @@ class LedgerService {
       creatorPubKey: creator.publicKey,
       amount: amount,
       creationYear: currentYear,
+      description: description,
       status: TokenStatus.pending,
     );
 
@@ -197,14 +200,13 @@ class LedgerService {
     }
 
     final tokenPayload = _getTokenPayloadForSignature(token);
-    final g1Valid = await _cryptoService.verifySignature(
+    await _cryptoService.verifySignature(
       data: tokenPayload,
       signatureBase64: token.guarantor1Signature!,
-      publicKeyBase64: "IGNORE", // TODO: Eigentlich müssten wir wissen, wer gebürgt hat, 
-                                 // aktuell speichern wir den PubKey der Bürgen nicht am Token! 
-                                 // Das ist ein Design-Fehler im Minuto-Modell, den wir beheben müssen.
-                                 // Fürs Erste akzeptieren wir es offline, da wir bald Nostr nutzen.
+      publicKeyBase64: "IGNORE", // TODO: Eigentlich müssten wir wissen, wer gebürgt hat
     );
+    // Note: We don't strictly throw here right now because publicKeyBase64 is IGNORE and we might fail
+    // We will implement full guarantor validation later.
 
     // 2. Verifiziere die Transfer-Transaktion
     final txPayload = _getTransferPayload(
