@@ -27,6 +27,17 @@ class CryptoService {
     return base64Encode(signature.bytes);
   }
 
+  /// Rekonstruiert ein SimpleKeyPair aus Base64-Strings.
+  Future<SimpleKeyPair> loadKeyPairFromBase64(String privateKeyBase64, String publicKeyBase64) async {
+    final privBytes = base64Decode(privateKeyBase64);
+    final pubBytes = base64Decode(publicKeyBase64);
+    return SimpleKeyPairData(
+      privBytes,
+      publicKey: SimplePublicKey(pubBytes, type: KeyPairType.ed25519),
+      type: KeyPairType.ed25519,
+    );
+  }
+
   /// Verifiziert eine Signatur anhand der Originaldaten und des Public Keys.
   Future<bool> verifySignature({
     required String data,

@@ -92,7 +92,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
                       label: Text('Erfolgreichen Scan simulieren', style: GoogleFonts.inter(color: Colors.white)),
                       onPressed: () {
                         // Wir simulieren hier einfach das Einlesen eines Gutscheins
-                        Navigator.of(context).pop("simulated_qr_data_123");
+                        Navigator.of(context).pop("digiminuto:guarantee:test1234:simulatedPubKey:100:2026");
                       },
                     )
                   ],

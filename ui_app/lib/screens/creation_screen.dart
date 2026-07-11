@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:barcode_widget/barcode_widget.dart';
 import '../services/app_services.dart';
 
 class CreationScreen extends StatefulWidget {
@@ -12,6 +12,7 @@ class CreationScreen extends StatefulWidget {
 
 class _CreationScreenState extends State<CreationScreen> {
   final TextEditingController _amountController = TextEditingController();
+  bool _isProcessing = false;
 
   void _onCreate() async {
     final amount = int.tryParse(_amountController.text) ?? 0;
@@ -22,6 +23,10 @@ class _CreationScreenState extends State<CreationScreen> {
       return;
     }
 
+    setState(() {
+      _isProcessing = true;
+    });
+
     try {
       final token = await AppServices.instance.ledgerService.createToken(
         creator: AppServices.instance.currentIdentity,
@@ -29,10 +34,14 @@ class _CreationScreenState extends State<CreationScreen> {
       );
 
       if (!mounted) return;
+      
+      // Tastatur/Fokus entfernen, um Deadlocks auf Desktop-Systemen zu vermeiden
+      FocusScope.of(context).unfocus();
 
       // Zeige Erfolg an
       showDialog(
         context: context,
+        barrierDismissible: false, // Verhindere Schließen durch Klicken daneben während UI rendert
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
           title: Text('Schöpfung initiiert', style: GoogleFonts.outfit(color: Colors.white)),
@@ -48,10 +57,14 @@ class _CreationScreenState extends State<CreationScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-                child: QrImageView(
-                  data: 'digiminuto:guarantee:${token.id}:${token.creatorPubKey}',
-                  version: QrVersions.auto,
-                  size: 200.0,
+                child: BarcodeWidget(
+                  barcode: Barcode.qrCode(),
+                  data: 'digiminuto:guarantee:${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}',
+                  width: 200.0,
+                  height: 200.0,
+                  color: Colors.black,
+                  backgroundColor: Colors.white,
+                  errorBuilder: (context, error) => Center(child: Text(error)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -74,8 +87,14 @@ class _CreationScreenState extends State<CreationScreen> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Fehler bei der Schöpfung: $e')),
+        SnackBar(content: Text('Fehler bei der Schöpfung: $e'), backgroundColor: Colors.redAccent),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
@@ -128,11 +147,13 @@ class _CreationScreenState extends State<CreationScreen> {
                   backgroundColor: const Color(0xFF6366F1), // Indigo
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                onPressed: _onCreate,
-                child: Text(
-                  'Jetzt Schöpfen',
-                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+                onPressed: _isProcessing ? null : _onCreate,
+                child: _isProcessing 
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      'Jetzt Schöpfen',
+                      style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
               ),
             ),
           ],

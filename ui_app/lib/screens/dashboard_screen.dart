@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../services/app_services.dart';
 import 'creation_screen.dart';
 import 'scanner_screen.dart';
+import 'guarantee_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -28,6 +29,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _balance = sum;
     });
+  }
+
+  Future<void> _handleScanResult(String data) async {
+    if (data.startsWith('digiminuto:guarantee:')) {
+      final parts = data.split(':');
+      if (parts.length >= 6) {
+        final tokenId = parts[2];
+        final creatorPubKey = parts[3];
+        final amount = int.tryParse(parts[4]) ?? 0;
+        final year = int.tryParse(parts[5]) ?? 0;
+        
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GuaranteeScreen(
+              tokenId: tokenId,
+              creatorPubKey: creatorPubKey,
+              amount: amount,
+              creationYear: year,
+            ),
+          ),
+        ).then((_) => _loadBalance());
+      }
+    } else if (data.startsWith('digiminuto:signature:')) {
+      final parts = data.split(':');
+      if (parts.length >= 5) {
+        final tokenId = parts[2];
+        final guarantorPubKey = parts[3];
+        final signatureBase64 = parts[4];
+
+        final token = await AppServices.instance.tokenRepository.getTokenById(tokenId);
+        if (token != null) {
+          try {
+            await AppServices.instance.ledgerService.addGuarantorSignature(
+              token: token,
+              guarantorPubKeyBase64: guarantorPubKey,
+              signatureBase64: signatureBase64,
+            );
+            _loadBalance();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Bürgschaft erfolgreich empfangen!'), backgroundColor: Colors.green),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Fehler: $e'), backgroundColor: Colors.red),
+              );
+            }
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Fehler: Token nicht gefunden.'), backgroundColor: Colors.red),
+            );
+          }
+        }
+      }
+    }
   }
 
   @override
@@ -172,8 +232,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: 'Empfangen',
           icon: Icons.qr_code,
           color: const Color(0xFFF59E0B), // Amber
-          onTap: () {
-            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScannerScreen()));
+          onTap: () async {
+            final result = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScannerScreen()));
+            if (result is String) {
+              _handleScanResult(result);
+            }
           },
         ),
         _ActionButton(
