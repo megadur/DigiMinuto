@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../main.dart';
 import 'package:core_engine/core_engine.dart';
 import '../services/app_services.dart';
 import 'creation_screen.dart';
@@ -109,8 +110,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Slate 900
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -118,13 +122,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'DigiMinuto',
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: textColor,
             fontSize: 24,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.qr_code_scanner, color: Colors.tealAccent),
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: textColor),
+            onPressed: () {
+              DigiMinutoApp.themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.qr_code_scanner, color: isDark ? Colors.tealAccent : Colors.teal),
             onPressed: () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScannerScreen()));
             },
@@ -147,11 +157,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: GoogleFonts.outfit(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white70,
+                  color: textColor.withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 15),
-              _buildTransactionList(),
+              _buildTransactionList(context, textColor, isDark),
             ],
           ),
         ),
@@ -266,7 +276,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildTransactionList() {
+  Widget _buildTransactionList(BuildContext context, Color textColor, bool isDark) {
     // Placeholder für Transaktionen
     return Column(
       children: List.generate(3, (index) {
@@ -274,9 +284,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
           ),
           child: Row(
             children: [
@@ -299,14 +309,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text(
                       index == 0 ? 'Empfangen von Anna' : 'Bürgschaft geleistet',
                       style: GoogleFonts.inter(
-                        color: Colors.white,
+                        color: textColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Text(
                       'Heute, 14:30',
                       style: GoogleFonts.inter(
-                        color: Colors.white54,
+                        color: textColor.withValues(alpha: 0.6),
                         fontSize: 12,
                       ),
                     ),
@@ -316,7 +326,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 index == 0 ? '+60' : '0',
                 style: GoogleFonts.outfit(
-                  color: index == 0 ? Colors.greenAccent : Colors.white70,
+                  color: index == 0 ? (isDark ? Colors.greenAccent : Colors.green) : textColor.withValues(alpha: 0.8),
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
                 ),
@@ -352,9 +362,9 @@ class _ActionButton extends StatelessWidget {
             height: 65,
             width: 65,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
             ),
             child: Icon(icon, color: color, size: 30),
           ),
@@ -362,7 +372,7 @@ class _ActionButton extends StatelessWidget {
           Text(
             title,
             style: GoogleFonts.inter(
-              color: Colors.white70,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),

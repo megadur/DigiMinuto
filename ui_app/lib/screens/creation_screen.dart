@@ -42,17 +42,21 @@ class _CreationScreenState extends State<CreationScreen> {
       showDialog(
         context: context,
         barrierDismissible: false, // Verhindere Schließen durch Klicken daneben während UI rendert
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: Text('Schöpfung initiiert', style: GoogleFonts.outfit(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Sie haben $amount Minutos geschöpft.\nLassen Sie diesen Code nun von 2 Bürgen scannen.',
-                style: GoogleFonts.inter(color: Colors.white70),
-                textAlign: TextAlign.center,
-              ),
+        builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final textColor = Theme.of(context).colorScheme.onSurface;
+          
+          return AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            title: Text('Schöpfung initiiert', style: GoogleFonts.outfit(color: textColor)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Sie haben $amount Minutos geschöpft.\nLassen Sie diesen Code nun von 2 Bürgen scannen.',
+                  style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8)),
+                  textAlign: TextAlign.center,
+                ),
               const SizedBox(height: 20),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -68,22 +72,23 @@ class _CreationScreenState extends State<CreationScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              Text(
-                'Token-ID: ${token.id.substring(0,8)}...',
-                style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+                Text(
+                  'Token-ID: ${token.id.substring(0,8)}...',
+                  style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.6), fontSize: 12),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close Dialog
+                  Navigator.of(context).pop(); // Return to Dashboard
+                },
+                child: Text('OK', style: TextStyle(color: isDark ? Colors.tealAccent : Colors.teal)),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close Dialog
-                Navigator.of(context).pop(); // Return to Dashboard
-              },
-              child: const Text('OK', style: TextStyle(color: Colors.tealAccent)),
-            ),
-          ],
-        ),
+          );
+        },
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -100,16 +105,18 @@ class _CreationScreenState extends State<CreationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'Minutos Schöpfen',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: textColor),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -118,20 +125,20 @@ class _CreationScreenState extends State<CreationScreen> {
           children: [
             Text(
               'Geben Sie den gewünschten Betrag ein (Maximal 1800 pro Jahr).',
-              style: GoogleFonts.inter(color: Colors.white70, fontSize: 16),
+              style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8), fontSize: 16),
             ),
             const SizedBox(height: 30),
             TextField(
               controller: _amountController,
               keyboardType: TextInputType.number,
-              style: GoogleFonts.outfit(fontSize: 32, color: Colors.white, fontWeight: FontWeight.bold),
+              style: GoogleFonts.outfit(fontSize: 32, color: textColor, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 filled: true,
-                fillColor: const Color(0xFF1E293B),
+                fillColor: Theme.of(context).colorScheme.surface,
                 hintText: '0',
-                hintStyle: GoogleFonts.outfit(color: Colors.white24),
+                hintStyle: GoogleFonts.outfit(color: textColor.withValues(alpha: 0.3)),
                 suffixText: 'Minutos',
-                suffixStyle: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 18),
+                suffixStyle: GoogleFonts.inter(color: Theme.of(context).brightness == Brightness.dark ? Colors.tealAccent : Colors.teal, fontSize: 18),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,

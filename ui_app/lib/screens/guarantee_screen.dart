@@ -84,24 +84,26 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text('Bürgschaft leisten', style: GoogleFonts.outfit(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text('Bürgschaft leisten', style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.bold)),
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: _signatureQrData != null ? _buildSuccessView() : _buildConfirmView(),
+          child: _signatureQrData != null ? _buildSuccessView(textColor) : _buildConfirmView(textColor),
         ),
       ),
     );
   }
 
-  Widget _buildConfirmView() {
+  Widget _buildConfirmView(Color textColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -109,13 +111,13 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
         const SizedBox(height: 24),
         Text(
           'Möchten Sie bürgen?',
-          style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Text(
           'Sie bürgen für ${widget.amount} Minutos.\nSchöpfer-ID: ${widget.creatorPubKey.substring(0,8)}...',
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(color: Colors.white70, fontSize: 16),
+          style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8), fontSize: 16),
         ),
         const SizedBox(height: 32),
         if (_error != null)
@@ -139,7 +141,7 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
     );
   }
 
-  Widget _buildSuccessView() {
+  Widget _buildSuccessView(Color textColor) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -147,13 +149,13 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
         const SizedBox(height: 24),
         Text(
           'Bürgschaft erfolgreich!',
-          style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         Text(
           'Lassen Sie den Schöpfer diesen QR-Code scannen, um die Bürgschaft offline abzuschließen.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(color: Colors.white70, fontSize: 16),
+          style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8), fontSize: 16),
         ),
         const SizedBox(height: 32),
         Container(

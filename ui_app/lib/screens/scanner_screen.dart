@@ -30,16 +30,18 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).colorScheme.onSurface;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           'QR-Code scannen',
-          style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold),
+          style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.bold),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
         actions: _isWindows ? [] : [
           IconButton(
             icon: const Icon(Icons.flash_on),
@@ -75,12 +77,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.no_photography, color: Colors.white54, size: 64),
+                    Icon(Icons.no_photography, color: textColor.withValues(alpha: 0.5), size: 64),
                     const SizedBox(height: 20),
                     Text(
                       'Kamera-Scanner wird auf Windows nicht unterstützt.\n(Bitte nutzen Sie später ein Android/iOS Gerät).',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 16),
+                      style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8), fontSize: 16),
                     ),
                     const SizedBox(height: 40),
                     ElevatedButton.icon(
@@ -128,8 +130,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 _isWindows ? 'Entwicklungs-Modus' : 'Scannen Sie den QR-Code\nfür Bürgschaft oder Zahlung.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                  color: Colors.white,
-                  backgroundColor: Colors.black54,
+                  color: textColor,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
                   fontSize: 16,
                 ),
               ),
