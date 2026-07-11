@@ -166,8 +166,10 @@ class LedgerService {
     final txId = sha256.convert(bytes).toString();
 
     // PrivateKey aus Base64 decodieren
-    final privKeyBytes = base64Decode(sender.privateKey);
-    final keyPair = await _cryptoService.getKeyPairFromPrivateKey(privKeyBytes);
+    if (sender.privateKey == null) {
+      throw Exception('Privater Schlüssel fehlt. Senden nicht möglich.');
+    }
+    final keyPair = await _cryptoService.loadKeyPairFromBase64(sender.privateKey!, sender.publicKey);
     final signature = await _cryptoService.signData(payload, keyPair);
 
     final transaction = Transaction(
