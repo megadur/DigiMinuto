@@ -84,15 +84,22 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     ),
                     const SizedBox(height: 40),
                     ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                      icon: const Icon(Icons.qr_code, color: Colors.white),
-                      label: Text('Erfolgreichen Scan simulieren', style: GoogleFonts.inter(color: Colors.white)),
+                      icon: const Icon(Icons.qr_code_2, color: Colors.white),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
+                      label: Text('Erfolgreiche Schöpfung simulieren', style: GoogleFonts.inter(color: Colors.white)),
                       onPressed: () {
-                        // Wir simulieren hier einfach das Einlesen eines Gutscheins
+                        // Simuliert den Scan eines Gutscheins (Bürge scannt Schöpfer)
                         Navigator.of(context).pop("digiminuto:guarantee:test1234:simulatedPubKey:100:2026");
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.verified, color: Colors.white),
+                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF14B8A6)),
+                      label: Text('Erfolgreichen Rückkanal simulieren', style: GoogleFonts.inter(color: Colors.white)),
+                      onPressed: () {
+                        // Simuliert den Scan der Signatur (Schöpfer scannt Bürge)
+                        Navigator.of(context).pop("digiminuto:signature:test1234:simulatedGuarantorKey:SimulatedSignatureBase64String==");
                       },
                     )
                   ],
