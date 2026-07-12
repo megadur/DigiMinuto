@@ -61,13 +61,13 @@ jobs:
 
       - name: Compress Windows Build
         working-directory: ./ui_app/build/windows/x64/runner/Release
-        run: Compress-Archive -Path * -DestinationPath ../../../../../DigiMinuto-Windows.zip
+        run: Compress-Archive -Path * -DestinationPath DigiMinuto-Windows.zip
 
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
         with:
           name: DigiMinuto-Windows-ZIP
-          path: DigiMinuto-Windows.zip
+          path: ui_app/build/windows/x64/runner/Release/DigiMinuto-Windows.zip
 
   create-release:
     needs: [build-android, build-windows]
