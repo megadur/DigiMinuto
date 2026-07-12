@@ -1,0 +1,94 @@
+name: Build and Release App
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Triggered when a tag like v1.0.0 is pushed
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        working-directory: ./ui_app
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: ./ui_app
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DigiMinuto-Android-APK
+          path: ui_app/build/app/outputs/flutter-apk/app-release.apk
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        working-directory: ./ui_app
+        run: flutter pub get
+
+      - name: Build Windows Executable
+        working-directory: ./ui_app
+        run: flutter build windows --release
+
+      - name: Compress Windows Build
+        working-directory: ./ui_app/build/windows/x64/runner/Release
+        run: Compress-Archive -Path * -DestinationPath ../../../../../DigiMinuto-Windows.zip
+
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: DigiMinuto-Windows-ZIP
+          path: DigiMinuto-Windows.zip
+
+  create-release:
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: DigiMinuto-Android-APK
+          path: release-artifacts
+
+      - name: Download Windows Build
+        uses: actions/download-artifact@v4
+        with:
+          name: DigiMinuto-Windows-ZIP
+          path: release-artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release-artifacts/app-release.apk
+            release-artifacts/DigiMinuto-Windows.zip
+          generate_release_notes: true
