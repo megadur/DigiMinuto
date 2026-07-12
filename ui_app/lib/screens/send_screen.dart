@@ -155,6 +155,41 @@ class _SendScreenState extends State<SendScreen> {
             ),
           ),
           const SizedBox(height: 30),
+          if (AppServices.instance.nostrService.isConnected) ...[
+            ElevatedButton.icon(
+              onPressed: () async {
+                try {
+                  await AppServices.instance.nostrService.sendPayload(
+                    tx.receiverPubKey,
+                    qrData,
+                    AppServices.instance.currentIdentity.privateKey!,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erfolgreich über Nostr gesendet!'), backgroundColor: Colors.green));
+                    Navigator.of(context).pop();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler beim Senden über Nostr: $e'), backgroundColor: Colors.red));
+                  }
+                }
+              },
+              icon: const Icon(Icons.cloud_upload),
+              label: Text('Senden via Nostr', style: GoogleFonts.inter()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Oder alternativ als QR-Code scannen:',
+              style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.6)),
+            ),
+            const SizedBox(height: 10),
+          ],
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

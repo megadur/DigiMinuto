@@ -53,11 +53,11 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
       final payload = "${widget.tokenId}:${widget.creatorPubKey}:${widget.amount}:${widget.creationYear}:$descBase64";
       
       // 2. KeyPair laden und signieren
-      final keyPair = await appServices.cryptoService.loadKeyPairFromBase64(
+      final keyPair = await appServices.cryptoService.loadKeyPairFromHex(
         identity.privateKey!, 
         identity.publicKey
       );
-      final signatureBase64 = await appServices.cryptoService.signData(payload, keyPair);
+      final signatureHex = await appServices.cryptoService.signData(payload, keyPair);
 
       // 3. Token in lokaler DB speichern als "Schwebend" (damit wir wissen, dass wir gebürgt haben)
       final token = Token(
@@ -68,12 +68,12 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
         description: widget.description,
         status: TokenStatus.pending,
       );
-      token.guarantor1Signature = signatureBase64;
+      token.guarantor1Signature = signatureHex;
       await appServices.tokenRepository.saveToken(token);
 
       // 4. QR-Code Daten generieren für den Rückkanal
       setState(() {
-        _signatureQrData = "digiminuto:signature:${widget.tokenId}:${identity.publicKey}:$signatureBase64";
+        _signatureQrData = "digiminuto:signature:${widget.tokenId}:${identity.publicKey}:$signatureHex";
       });
 
     } catch (e) {
@@ -181,6 +181,41 @@ class _GuaranteeScreenState extends State<GuaranteeScreen> {
           style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8), fontSize: 16),
         ),
         const SizedBox(height: 32),
+        if (AppServices.instance.nostrService.isConnected) ...[
+          ElevatedButton.icon(
+            onPressed: () async {
+              try {
+                await AppServices.instance.nostrService.sendPayload(
+                  widget.creatorPubKey,
+                  _signatureQrData!,
+                  AppServices.instance.currentIdentity.privateKey!,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erfolgreich über Nostr gesendet!'), backgroundColor: Colors.green));
+                  Navigator.of(context).pop();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fehler beim Senden über Nostr: $e'), backgroundColor: Colors.red));
+                }
+              }
+            },
+            icon: const Icon(Icons.cloud_upload),
+            label: Text('Senden via Nostr', style: GoogleFonts.inter()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Oder alternativ als QR-Code scannen:',
+            style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.6)),
+          ),
+          const SizedBox(height: 10),
+        ],
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),

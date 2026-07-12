@@ -88,35 +88,35 @@ void main() {
 
   test('2-Bürgen-Regel aktiviert Token', () async {
     final creatorKeyPair = await cryptoService.generateKeyPair();
-    final creatorPubBase64 = await cryptoService.getPublicKeyBase64(creatorKeyPair);
-    final creator = Identity(publicKey: creatorPubBase64, privateKey: 'hidden');
+    final creatorPubHex = await cryptoService.getPublicKeyHex(creatorKeyPair);
+    final creator = Identity(publicKey: creatorPubHex, privateKey: 'hidden');
 
     final token = await ledger.createToken(creator: creator, amount: 100);
 
     // Bürge 1
     final g1KeyPair = await cryptoService.generateKeyPair();
-    final g1PubBase64 = await cryptoService.getPublicKeyBase64(g1KeyPair);
+    final g1PubHex = await cryptoService.getPublicKeyHex(g1KeyPair);
     final descBase64 = base64Encode(utf8.encode(token.description));
     final payload = "${token.id}:${token.creatorPubKey}:${token.amount}:${token.creationYear}:$descBase64";
     final sig1 = await cryptoService.signData(payload, g1KeyPair);
 
     await ledger.addGuarantorSignature(
       token: token,
-      guarantorPubKeyBase64: g1PubBase64,
-      signatureBase64: sig1,
+      guarantorPubKeyHex: g1PubHex,
+      signatureHex: sig1,
     );
 
     expect(token.status, TokenStatus.pending);
 
     // Bürge 2
     final g2KeyPair = await cryptoService.generateKeyPair();
-    final g2PubBase64 = await cryptoService.getPublicKeyBase64(g2KeyPair);
+    final g2PubHex = await cryptoService.getPublicKeyHex(g2KeyPair);
     final sig2 = await cryptoService.signData(payload, g2KeyPair);
 
     await ledger.addGuarantorSignature(
       token: token,
-      guarantorPubKeyBase64: g2PubBase64,
-      signatureBase64: sig2,
+      guarantorPubKeyHex: g2PubHex,
+      signatureHex: sig2,
     );
 
     // Nach 2 Bürgen muss der Token aktiv sein

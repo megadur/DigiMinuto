@@ -72,23 +72,23 @@ class LedgerService {
   /// Sobald zwei gültige Signaturen vorliegen, wird der Token 'active'.
   Future<Token> addGuarantorSignature({
     required Token token,
-    required String guarantorPubKeyBase64,
-    required String signatureBase64,
+    required String guarantorPubKeyHex,
+    required String signatureHex,
   }) async {
     if (token.status != TokenStatus.pending) {
       throw LedgerException("Token ist nicht mehr im Status 'pending'.");
     }
 
-    if (guarantorPubKeyBase64 == token.creatorPubKey) {
-      throw LedgerException("Der Schöpfer kann nicht sein eigener Bürge sein.");
+    if (guarantorPubKeyHex == token.creatorPubKey) {
+      throw LedgerException('Der Schöpfer darf nicht selbst bürgen.');
     }
 
     // Verifiziere die Signatur des Bürgen
     final payload = _getTokenPayloadForSignature(token);
     final isValid = await _cryptoService.verifySignature(
       data: payload,
-      signatureBase64: signatureBase64,
-      publicKeyBase64: guarantorPubKeyBase64,
+      signatureHex: signatureHex,
+      publicKeyHex: guarantorPubKeyHex,
     );
 
     if (!isValid) {
@@ -97,18 +97,13 @@ class LedgerService {
 
     // Trage Signatur ein
     if (token.guarantor1Signature == null) {
-      token.guarantor1Signature = signatureBase64;
-    } else if (token.guarantor2Signature == null) {
-      // Prüfe, ob es nicht derselbe Bürge ist (vereinfacht: vergleiche Signaturen)
-      if (token.guarantor1Signature == signatureBase64) {
-        throw LedgerException("Dieser Bürge hat bereits unterschrieben.");
-      }
-      token.guarantor2Signature = signatureBase64;
-      
-      // Token wird aktiv, da zwei Bürgen unterschrieben haben!
-      token.status = TokenStatus.active;
+      token.guarantor1Signature = signatureHex;
     } else {
-      throw LedgerException("Token hat bereits 2 Bürgen.");
+      if (token.guarantor1Signature == signatureHex) {
+        throw LedgerException('Dieser Bürge hat bereits unterschrieben.');
+      }
+      token.guarantor2Signature = signatureHex;
+      token.status = TokenStatus.active;
     }
 
     await _tokenRepository.saveToken(token);
@@ -168,11 +163,11 @@ class LedgerService {
     final bytes = utf8.encode(payload);
     final txId = sha256.convert(bytes).toString();
 
-    // PrivateKey aus Base64 decodieren
+    // PrivateKey aus Hex laden
     if (sender.privateKey == null) {
       throw Exception('Privater Schlüssel fehlt. Senden nicht möglich.');
     }
-    final keyPair = await _cryptoService.loadKeyPairFromBase64(sender.privateKey!, sender.publicKey);
+    final keyPair = await _cryptoService.loadKeyPairFromHex(sender.privateKey!, sender.publicKey);
     final signature = await _cryptoService.signData(payload, keyPair);
 
     final transaction = Transaction(
@@ -202,10 +197,10 @@ class LedgerService {
     final tokenPayload = _getTokenPayloadForSignature(token);
     await _cryptoService.verifySignature(
       data: tokenPayload,
-      signatureBase64: token.guarantor1Signature!,
-      publicKeyBase64: "IGNORE", // TODO: Eigentlich müssten wir wissen, wer gebürgt hat
+      signatureHex: token.guarantor1Signature!,
+      publicKeyHex: "IGNORE", // TODO: Eigentlich müssten wir wissen, wer gebürgt hat
     );
-    // Note: We don't strictly throw here right now because publicKeyBase64 is IGNORE and we might fail
+    // Note: We don't strictly throw here right now because publicKeyHex is IGNORE and we might fail
     // We will implement full guarantor validation later.
 
     // 2. Verifiziere die Transfer-Transaktion
@@ -216,13 +211,13 @@ class LedgerService {
       transaction.timestamp.toIso8601String()
     );
 
-    final txValid = await _cryptoService.verifySignature(
+    final isTxValid = await _cryptoService.verifySignature(
       data: txPayload,
-      signatureBase64: transaction.signature,
-      publicKeyBase64: transaction.senderPubKey,
+      signatureHex: transaction.signature,
+      publicKeyHex: transaction.senderPubKey,
     );
 
-    if (!txValid) {
+    if (!isTxValid) {
       throw LedgerException("Die Signatur der Transaktion ist ungültig.");
     }
 

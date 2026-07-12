@@ -27,6 +27,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _loadBalance();
     _loadContacts();
+    
+    // Auf eingehende Nostr-Nachrichten lauschen
+    AppServices.instance.nostrService.startListening(
+      AppServices.instance.currentIdentity.publicKey,
+      (payload) {
+        if (mounted) {
+          _handleScanResult(payload);
+        }
+      }
+    );
   }
 
   Future<void> _loadContacts() async {
@@ -114,8 +124,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           try {
             await AppServices.instance.ledgerService.addGuarantorSignature(
               token: token,
-              guarantorPubKeyBase64: guarantorPubKey,
-              signatureBase64: signatureBase64,
+              guarantorPubKeyHex: guarantorPubKey,
+              signatureHex: signatureBase64, // Keep the variable name as signatureBase64 for now, since it comes from the QR
             );
             _loadBalance();
             if (mounted) {
@@ -279,6 +289,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         actions: [
+          StreamBuilder<bool>(
+            stream: AppServices.instance.nostrService.connectionStatus,
+            initialData: AppServices.instance.nostrService.isConnected,
+            builder: (context, snapshot) {
+              final isConnected = snapshot.data ?? false;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Icon(
+                  isConnected ? Icons.cloud_done : Icons.cloud_off,
+                  color: isConnected ? Colors.green : Colors.redAccent,
+                  size: 20,
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: textColor),
             onPressed: () {
