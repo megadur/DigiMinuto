@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:core_engine/core_engine.dart';
+import 'dart:convert';
 import '../services/app_services.dart';
 import 'package:flutter/services.dart';
 
@@ -14,44 +15,50 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nameController;
+  late TextEditingController _portfolioController;
   late Identity _identity;
-  bool _isEditingName = false;
+  bool _isEditing = false;
 
   @override
   void initState() {
     super.initState();
     _identity = AppServices.instance.currentIdentity;
     _nameController = TextEditingController(text: _identity.name);
+    _portfolioController = TextEditingController(text: _identity.portfolio);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _portfolioController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveName() async {
+  Future<void> _saveProfile() async {
     final newName = _nameController.text.trim();
-    if (newName.isNotEmpty && newName != _identity.name) {
+    final newPortfolio = _portfolioController.text.trim();
+
+    if (newName.isNotEmpty) {
       final updatedIdentity = Identity(
         publicKey: _identity.publicKey,
         privateKey: _identity.privateKey,
         name: newName,
+        portfolio: newPortfolio.isEmpty ? null : newPortfolio,
       );
       await AppServices.instance.identityRepository.saveIdentity(updatedIdentity);
       AppServices.instance.currentIdentity = updatedIdentity;
       setState(() {
         _identity = updatedIdentity;
-        _isEditingName = false;
+        _isEditing = false;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Name erfolgreich geändert!'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Profil erfolgreich geändert!'), backgroundColor: Colors.green),
         );
       }
     } else {
       setState(() {
-        _isEditingName = false;
+        _isEditing = false;
       });
     }
   }
@@ -125,43 +132,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
               
-              // Name Section
-              if (_isEditingName)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+              // Profile Section
+              if (_isEditing)
+                Column(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Ihr Name',
-                          border: OutlineInputBorder(),
-                        ),
-                        onSubmitted: (_) => _saveName(),
+                    TextField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ihr Name',
+                        border: OutlineInputBorder(),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.check, color: Colors.green),
-                      onPressed: _saveName,
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _portfolioController,
+                      decoration: const InputDecoration(
+                        labelText: 'Ihre Schwerpunkte (z.B. Webdesign, Yoga)',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
                     ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.check),
+                      label: const Text('Speichern'),
+                      onPressed: _saveProfile,
+                    )
                   ],
                 )
               else
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Column(
                   children: [
-                    Text(
-                      _identity.name ?? 'Unbekannt',
-                      style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: textColor),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _identity.name ?? 'Unbekannt',
+                          style: GoogleFonts.outfit(fontSize: 28, fontWeight: FontWeight.bold, color: textColor),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () {
+                            setState(() {
+                              _isEditing = true;
+                            });
+                          },
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.edit, size: 20),
-                      onPressed: () {
-                        setState(() {
-                          _isEditingName = true;
-                        });
-                      },
-                    ),
+                    if (_identity.portfolio != null && _identity.portfolio!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          _identity.portfolio!,
+                          style: GoogleFonts.inter(fontSize: 16, fontStyle: FontStyle.italic, color: textColor.withValues(alpha: 0.8)),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                   ],
                 ),
 
@@ -187,10 +214,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     )
                   ],
                 ),
-                child: QrImageView(
-                  data: 'digiminuto:pubkey:${_identity.publicKey}',
-                  version: QrVersions.auto,
-                  size: 200,
+                child: Builder(
+                  builder: (context) {
+                    final profileMap = {
+                      'pubkey': _identity.publicKey,
+                      'name': _identity.name,
+                      'portfolio': _identity.portfolio,
+                    };
+                    final profileJson = jsonEncode(profileMap);
+                    final profileBase64 = base64Encode(utf8.encode(profileJson));
+                    final qrData = 'digiminuto:profile:$profileBase64';
+                    return QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 200,
+                    );
+                  }
                 ),
               ),
               const SizedBox(height: 20),

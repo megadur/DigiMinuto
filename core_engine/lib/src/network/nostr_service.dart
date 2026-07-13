@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dart_nostr/dart_nostr.dart';
+import '../models/request_post.dart';
 
 class NostrService {
   final List<String> _relays = [
@@ -15,6 +16,7 @@ class NostrService {
   bool get isConnected => _isConnected;
   
   StreamSubscription<NostrEvent>? _subscription;
+  StreamSubscription<NostrEvent>? _requestsSubscription;
 
   Future<void> connect() async {
     try {
@@ -77,9 +79,50 @@ class NostrService {
     Nostr.instance.relays.sendEventToRelays(event);
   }
 
+  void publishRequest(String text, String myPrivateKey) {
+    final event = NostrEvent.fromPartialData(
+      kind: 1,
+      content: text,
+      keyPairs: NostrKeyPairs(private: myPrivateKey),
+      tags: [
+        ["t", "digiminuto_request"]
+      ],
+    );
+    Nostr.instance.relays.sendEventToRelays(event);
+  }
+
+  void subscribeToRequests(Function(RequestPost) onPost) {
+    if (_requestsSubscription != null) return;
+    
+    final request = NostrRequest(
+      filters: [
+        NostrFilter(
+          kinds: [1],
+          t: ["digiminuto_request"],
+          since: DateTime.now().subtract(const Duration(days: 7)),
+        )
+      ],
+    );
+    
+    final stream = Nostr.instance.relays.startEventsSubscription(request: request);
+    _requestsSubscription = stream.stream.listen((event) {
+      if (event.content != null && event.content!.isNotEmpty) {
+        final post = RequestPost(
+          id: event.id ?? '',
+          pubKey: event.pubkey,
+          text: event.content!,
+          timestamp: event.createdAt ?? DateTime.now(),
+        );
+        onPost(post);
+      }
+    });
+  }
+
   Future<void> disconnect() async {
     await _subscription?.cancel();
     _subscription = null;
+    await _requestsSubscription?.cancel();
+    _requestsSubscription = null;
     await Nostr.instance.relays.freeAllResources();
     _isConnected = false;
     _connectionStatusController.add(false);

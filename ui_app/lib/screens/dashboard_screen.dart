@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:core_engine/core_engine.dart';
+import 'dart:convert';
 import '../main.dart';
 import 'package:core_engine/core_engine.dart';
 import 'dart:convert';
@@ -9,6 +12,7 @@ import 'scanner_screen.dart';
 import 'guarantee_screen.dart';
 import 'send_screen.dart';
 import 'profile_screen.dart';
+import 'marketplace_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -218,12 +222,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (parts.length >= 3) {
         _promptSaveContact(parts[2]);
       }
+    } else if (data.startsWith('digiminuto:profile:')) {
+      try {
+        final b64 = data.substring('digiminuto:profile:'.length);
+        final jsonStr = utf8.decode(base64Decode(b64));
+        final map = jsonDecode(jsonStr);
+        _promptSaveContact(
+          map['pubkey'],
+          defaultName: map['name'],
+          defaultPortfolio: map['portfolio'],
+        );
+      } catch (e) {
+        debugPrint('Invalid profile QR: $e');
+      }
     }
   }
 
-  Future<void> _promptSaveContact(String pubKey) async {
+  Future<void> _promptSaveContact(String pubKey, {String? defaultName, String? defaultPortfolio}) async {
     final existing = await AppServices.instance.contactRepository.getContactByPublicKey(pubKey);
-    final nameController = TextEditingController(text: existing?.name ?? '');
+    final nameController = TextEditingController(text: existing?.name ?? defaultName ?? '');
+    final portfolioController = TextEditingController(text: existing?.portfolio ?? defaultPortfolio ?? '');
 
     if (!mounted) return;
     
@@ -232,18 +250,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) {
         return AlertDialog(
           title: Text(existing == null ? 'Neuen Kontakt speichern' : 'Kontakt bearbeiten', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Möchten Sie diesen Schlüssel speichern?', style: GoogleFonts.inter()),
-              const SizedBox(height: 10),
-              SelectableText(pubKey, style: GoogleFonts.robotoMono(fontSize: 10)),
-              const SizedBox(height: 20),
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name (z.B. Alice)'),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Möchten Sie diesen Schlüssel speichern?', style: GoogleFonts.inter()),
+                const SizedBox(height: 10),
+                SelectableText(pubKey, style: GoogleFonts.robotoMono(fontSize: 10)),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Name (z.B. Alice)'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: portfolioController,
+                  decoration: const InputDecoration(labelText: 'Schwerpunkte / Angebote'),
+                  maxLines: 2,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -253,8 +279,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             TextButton(
               onPressed: () async {
                 final name = nameController.text.trim();
+                final portfolio = portfolioController.text.trim();
                 if (name.isNotEmpty) {
-                  await AppServices.instance.contactRepository.saveContact(Contact(publicKey: pubKey, name: name));
+                  await AppServices.instance.contactRepository.saveContact(Contact(
+                    publicKey: pubKey, 
+                    name: name,
+                    portfolio: portfolio.isEmpty ? null : portfolio,
+                  ));
                   _loadContacts();
                   if (context.mounted) {
                     Navigator.of(context).pop();
@@ -463,6 +494,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SendScreen())).then((_) {
               _loadBalance();
             });
+          },
+        ),
+        _ActionButton(
+          title: 'Pinnwand',
+          icon: Icons.forum_rounded,
+          color: const Color(0xFF10B981), // Emerald
+          onTap: () {
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketplaceScreen()));
           },
         ),
       ],
