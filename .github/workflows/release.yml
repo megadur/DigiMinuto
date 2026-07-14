@@ -30,9 +30,24 @@ jobs:
         working-directory: ./ui_app
         run: flutter pub get
 
+      - name: Setup Keystore
+        working-directory: ./ui_app/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_PROPERTIES: ${{ secrets.KEY_PROPERTIES }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo $KEYSTORE_BASE64 | base64 --decode > app/upload-keystore.jks
+            echo "$KEY_PROPERTIES" > key.properties
+          fi
+        shell: bash
+
       - name: Build APK
         working-directory: ./ui_app
-        run: flutter build apk --release
+        run: |
+          VERSION_NAME=${GITHUB_REF_NAME#v}
+          flutter build apk --release --build-name=$VERSION_NAME --build-number=${{ github.run_number }}
+        shell: bash
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
