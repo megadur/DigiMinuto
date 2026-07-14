@@ -12,3 +12,10 @@ Das Ziel dieses Projekts ist es, die Schwachstellen von physischem Papiergeld (F
 4. **Reputation:** Jeder Token trägt die Historie seines Schöpfers und der Bürgen mit sich. 
 
 Für detaillierte Informationen zur geplanten Architektur, siehe [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+Damit haben wir jetzt ein absolut rundes und sehr mächtiges Werkzeug:
+
+ * Die Basis: Kryptografisch sichere Tokens und Bürgschaften (Web of Trust).
+* Die Erweiterung: Der Marktplatz für lokale Angebote und Gesuche.
+* Die Struktur: Sichere, einladungsbasierte Gruppen, um das Netzwerk überschaubar und vertrauenswürdig zu halten.
+* Die Verfügbarkeit: Als installierbare App oder komplett ohne Installation als Web-App direkt im Browser.
