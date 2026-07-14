@@ -20,6 +20,8 @@ Die Core Engine enthält die reine Geschäftslogik. Sie weiß nichts von Benutze
   * Schnittstellen für das Speichern und Laden von Profilen, Tokens und Transaktions-Logs. Die tatsächliche Implementierung (z.B. SQLite) wird später injiziert.
 * **Netzwerk-Abstraktion (P2P):**
   * Logik zur Konvertierung lokaler Transaktionen in Formate, die über das Nostr-Protokoll synchronisiert werden können.
+* **Gruppen- & Community-Management:**
+  * Verwaltung von Mitgliedschaften in isolierten Netzwerken (Gruppen), um Vertrauen lokal zu bündeln und globale Spam-Probleme zu vermeiden.
 
 ### 1.2 DigiMinuto UI (Client App)
 Die Benutzeroberfläche nutzt die Core Engine. (Das Framework - Flutter oder Angular/Ionic - wird noch final festgelegt).
@@ -35,6 +37,13 @@ Die Persistenz erfolgt lokal auf dem Gerät. Wir benötigen folgende Kern-Entit�
 ### 2.1 Identity (Profil)
 * Eigene Identität: `PrivateKey` (Sicher verwahrt), `PublicKey` (Kontonummer/ID).
 * Kontakte: `PublicKey` (bekannter Nutzer), lokaler Name, Reputations-Metadaten.
+
+### 2.2 GroupMembership (Community-Zugehörigkeit)
+* Isoliert Transaktionen und Marktplatz-Anfragen auf eine vertrauenswürdige Gruppe.
+* `GroupId`: Eindeutige ID der Gruppe.
+* `GroupName`: Name der Gemeinschaft (z.B. "Ökodorf XYZ").
+* `MemberPubKey` & `InviterPubKey`: Dokumentiert, wer wen in die Gruppe eingeladen hat.
+* `Signature`: Kryptografischer Beweis der Einladung (Einlass-Ticket).
 
 ### 2.2 Token (Gutschein/Zertifikat)
 Repräsentiert einen geschöpften Wert (in der Regel 1 Token = 1 Minuto).

@@ -7,6 +7,7 @@ Hier ist der Entwurf für die technische und funktionale Spezifikation:
 ### **1\. Architektur & Datenhaltung**
 
 * **Lokal-First & P2P:** Keine zentrale Cloud-Datenbank. Die Daten liegen verschlüsselt auf den Smartphones der Teilnehmer. Der Abgleich erfolgt direkt von Gerät zu Gerät (via Bluetooth/WLAN bei Treffen) oder über ein dezentrales, leichtgewichtiges Netzwerk (z. B. Nostr-Protokoll oder ein privates IPFS-Netzwerk).  
+* **Gruppen & Communities:** Das System ist in isolierte, sichere Netzwerke (Gruppen) unterteilt. Die Teilnahme erfordert ein kryptografisch signiertes Einladungs-Ticket ("Web of Trust"), sodass Communities wie ein lokales Dorf oder ein Tauschring unter sich bleiben.
 * **Kryptografie (Schlüsselpaare):** Jeder Teilnehmer generiert bei der Einrichtung ein Schlüsselpaar (Public Key \= Kontonummer/ID; Private Key \= Digitale Unterschrift).
 
 ### **2\. Der digitale Gutschein (Token-Schöpfung)**
