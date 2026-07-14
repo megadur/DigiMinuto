@@ -10,6 +10,8 @@ class Token {
   final int amount;
   final int creationYear;
   final String description;
+  final String? groupId;
+  final String? groupName;
   String? guarantor1Signature;
   String? guarantor2Signature;
   TokenStatus status;
@@ -20,6 +22,8 @@ class Token {
     required this.amount,
     required this.creationYear,
     this.description = '',
+    this.groupId,
+    this.groupName,
     this.guarantor1Signature,
     this.guarantor2Signature,
     this.status = TokenStatus.pending,
@@ -32,6 +36,8 @@ class Token {
       'amount': amount,
       'creationYear': creationYear,
       'description': description,
+      'groupId': groupId,
+      'groupName': groupName,
       'guarantor1Signature': guarantor1Signature,
       'guarantor2Signature': guarantor2Signature,
       'status': status.name,
@@ -45,6 +51,8 @@ class Token {
       amount: json['amount'],
       creationYear: json['creationYear'],
       description: json['description'] ?? '',
+      groupId: json['groupId'],
+      groupName: json['groupName'],
       guarantor1Signature: json['guarantor1Signature'],
       guarantor2Signature: json['guarantor2Signature'],
       status: TokenStatus.values.firstWhere(

@@ -30,7 +30,7 @@ class SqfliteTokenRepository implements TokenRepository {
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: 5,
         onCreate: (db, version) async {
           // Token Tabelle
           await db.execute('''
@@ -40,6 +40,8 @@ class SqfliteTokenRepository implements TokenRepository {
               amount INTEGER NOT NULL,
               creationYear INTEGER NOT NULL,
               description TEXT NOT NULL,
+              groupId TEXT,
+              groupName TEXT,
               guarantor1Signature TEXT,
               guarantor2Signature TEXT,
               status TEXT NOT NULL
@@ -66,6 +68,18 @@ class SqfliteTokenRepository implements TokenRepository {
               portfolio TEXT
             )
           ''');
+
+          // Groups Tabelle
+          await db.execute('''
+            CREATE TABLE groups (
+              groupId TEXT PRIMARY KEY,
+              groupName TEXT NOT NULL,
+              memberPubKey TEXT NOT NULL,
+              inviterPubKey TEXT NOT NULL,
+              timestamp TEXT NOT NULL,
+              signature TEXT NOT NULL
+            )
+          ''');
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
@@ -84,6 +98,24 @@ class SqfliteTokenRepository implements TokenRepository {
           if (oldVersion < 4) {
             await db.execute('''
               ALTER TABLE contacts ADD COLUMN portfolio TEXT
+            ''');
+          }
+          if (oldVersion < 5) {
+            await db.execute('''
+              ALTER TABLE tokens ADD COLUMN groupId TEXT
+            ''');
+            await db.execute('''
+              ALTER TABLE tokens ADD COLUMN groupName TEXT
+            ''');
+            await db.execute('''
+              CREATE TABLE groups (
+                groupId TEXT PRIMARY KEY,
+                groupName TEXT NOT NULL,
+                memberPubKey TEXT NOT NULL,
+                inviterPubKey TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                signature TEXT NOT NULL
+              )
             ''');
           }
         },

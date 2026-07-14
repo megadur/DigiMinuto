@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dart_nostr/dart_nostr.dart';
 import '../models/request_post.dart';
+import '../models/group_membership.dart';
 
 class NostrService {
   final List<String> _relays = [
@@ -79,26 +81,41 @@ class NostrService {
     Nostr.instance.relays.sendEventToRelays(event);
   }
 
-  void publishRequest(String text, String myPrivateKey) {
+  void publishRequest(String text, String myPrivateKey, {GroupMembership? group}) {
+    final tags = <List<String>>[];
+    
+    if (group != null) {
+      tags.add(["t", "digiminuto_group_${group.groupId}"]);
+      // Unsichtbar das Einladungs-Ticket mitsenden
+      tags.add(["group_ticket", jsonEncode(group.toMap())]);
+    } else {
+      tags.add(["t", "digiminuto_request"]);
+    }
+
     final event = NostrEvent.fromPartialData(
       kind: 1,
       content: text,
       keyPairs: NostrKeyPairs(private: myPrivateKey),
-      tags: [
-        ["t", "digiminuto_request"]
-      ],
+      tags: tags,
     );
     Nostr.instance.relays.sendEventToRelays(event);
   }
 
-  void subscribeToRequests(Function(RequestPost) onPost) {
-    if (_requestsSubscription != null) return;
+  void subscribeToRequests(Function(RequestPost, GroupMembership?) onPost, {List<String>? groupIds}) {
+    if (_requestsSubscription != null) {
+      _requestsSubscription?.cancel();
+      _requestsSubscription = null;
+    }
     
+    final tags = groupIds != null && groupIds.isNotEmpty 
+        ? groupIds.map((id) => "digiminuto_group_$id").toList()
+        : ["digiminuto_request"];
+
     final request = NostrRequest(
       filters: [
         NostrFilter(
           kinds: [1],
-          t: ["digiminuto_request"],
+          t: tags,
           since: DateTime.now().subtract(const Duration(days: 7)),
         )
       ],
@@ -113,7 +130,16 @@ class NostrService {
           text: event.content!,
           timestamp: event.createdAt ?? DateTime.now(),
         );
-        onPost(post);
+        
+        GroupMembership? ticket;
+        try {
+          final ticketTag = event.tags?.firstWhere((t) => t.isNotEmpty && t[0] == 'group_ticket', orElse: () => <String>[]);
+          if (ticketTag != null && ticketTag.length > 1) {
+            ticket = GroupMembership.fromMap(jsonDecode(ticketTag[1]));
+          }
+        } catch (_) {}
+
+        onPost(post, ticket);
       }
     });
   }

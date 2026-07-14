@@ -35,6 +35,8 @@ class LedgerService {
     required Identity creator,
     required int amount,
     String description = '',
+    String? groupId,
+    String? groupName,
   }) async {
     if (amount <= 0) {
       throw LedgerException("Betrag muss größer als 0 sein.");
@@ -61,6 +63,8 @@ class LedgerService {
       amount: amount,
       creationYear: currentYear,
       description: description,
+      groupId: groupId,
+      groupName: groupName,
       status: TokenStatus.pending,
     );
 

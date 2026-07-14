@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:barcode_widget/barcode_widget.dart';
+import 'package:core_engine/core_engine.dart';
 import '../services/app_services.dart';
 
 class CreationScreen extends StatefulWidget {
@@ -15,6 +16,24 @@ class _CreationScreenState extends State<CreationScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   bool _isProcessing = false;
+  List<GroupMembership> _myGroups = [];
+  GroupMembership? _selectedGroup;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGroups();
+  }
+
+  Future<void> _loadGroups() async {
+    final groups = await AppServices.instance.groupRepository.getAllGroups();
+    if (mounted && groups.isNotEmpty) {
+      setState(() {
+        _myGroups = groups;
+        _selectedGroup = groups.first;
+      });
+    }
+  }
 
   void _onCreate() async {
     final amount = int.tryParse(_amountController.text) ?? 0;
@@ -34,6 +53,8 @@ class _CreationScreenState extends State<CreationScreen> {
         creator: AppServices.instance.currentIdentity,
         amount: amount,
         description: _descriptionController.text.trim(),
+        groupId: _selectedGroup?.groupId,
+        groupName: _selectedGroup?.groupName,
       );
 
       if (!mounted) return;
@@ -163,7 +184,35 @@ class _CreationScreenState extends State<CreationScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
+            if (_myGroups.isNotEmpty)
+              DropdownButtonFormField<GroupMembership>(
+                value: _selectedGroup,
+                decoration: InputDecoration(
+                  labelText: 'Für welche Gruppe ist dieser Minuto?',
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: _myGroups.map((group) {
+                  return DropdownMenuItem(
+                    value: group,
+                    child: Text(group.groupName),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedGroup = val;
+                  });
+                },
+              ),
+            if (_myGroups.isNotEmpty)
+              const SizedBox(height: 40)
+            else
+              const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
               height: 60,

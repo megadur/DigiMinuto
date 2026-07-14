@@ -13,6 +13,8 @@ import 'guarantee_screen.dart';
 import 'send_screen.dart';
 import 'profile_screen.dart';
 import 'marketplace_screen.dart';
+import 'dart:convert';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -235,6 +237,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } catch (e) {
         debugPrint('Invalid profile QR: $e');
       }
+    } else if (data.startsWith('digiminuto:invite:')) {
+      try {
+        final b64 = data.substring('digiminuto:invite:'.length);
+        final jsonStr = utf8.decode(base64Decode(b64));
+        final group = GroupMembership.fromJson(jsonStr);
+        
+        // Verifiziere die Signatur
+        final isValid = await AppServices.instance.cryptoService.verifySignature(
+          publicKeyHex: group.inviterPubKey,
+          data: group.messageToSign,
+          signatureHex: group.signature,
+        );
+        
+        if (isValid && mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Gruppeneinladung'),
+              content: Text('Sie wurden von ${group.inviterPubKey.substring(0,8)}... in die Gruppe "${group.groupName}" eingeladen. Annehmen?'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ablehnen')),
+                FilledButton(
+                  onPressed: () async {
+                    await AppServices.instance.groupRepository.saveGroup(group);
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Einladung angenommen!')));
+                    }
+                  },
+                  child: const Text('Annehmen'),
+                )
+              ],
+            )
+          );
+        }
+      } catch (e) {
+        debugPrint('Invalid invite QR: $e');
+      }
     }
   }
 
@@ -278,6 +318,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             TextButton(
               onPressed: () async {
+                Navigator.of(context).pop();
+                _showInviteToGroupDialog(pubKey);
+              },
+              child: const Text('In Gruppe einladen'),
+            ),
+            FilledButton(
+              onPressed: () async {
                 final name = nameController.text.trim();
                 final portfolio = portfolioController.text.trim();
                 if (name.isNotEmpty) {
@@ -298,6 +345,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         );
       },
+    );
+  }
+
+  void _showInviteToGroupDialog(String contactPubKey) async {
+    final groups = await AppServices.instance.groupRepository.getAllGroups();
+    if (!mounted) return;
+    
+    if (groups.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sie sind in keiner Gruppe, um jemanden einzuladen.')));
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('In Gruppe einladen'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: groups.length,
+              itemBuilder: (ctx2, i) {
+                final group = groups[i];
+                return ListTile(
+                  title: Text(group.groupName),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    
+                    final myPubKey = AppServices.instance.currentIdentity.publicKey;
+                    final membership = GroupMembership(
+                      groupId: group.groupId,
+                      groupName: group.groupName,
+                      memberPubKey: contactPubKey,
+                      inviterPubKey: myPubKey,
+                      timestamp: DateTime.now(),
+                      signature: '',
+                    );
+                    
+                    final keyPair = await AppServices.instance.cryptoService.loadKeyPairFromHex(
+                      AppServices.instance.currentIdentity.privateKey!,
+                      myPubKey
+                    );
+                    
+                    final signature = await AppServices.instance.cryptoService.signData(
+                      membership.messageToSign,
+                      keyPair,
+                    );
+                    
+                    final signedMembership = GroupMembership(
+                      groupId: group.groupId,
+                      groupName: group.groupName,
+                      memberPubKey: contactPubKey,
+                      inviterPubKey: myPubKey,
+                      timestamp: membership.timestamp,
+                      signature: signature,
+                    );
+                    
+                    final b64 = base64Encode(utf8.encode(signedMembership.toJson()));
+                    if (mounted) {
+                      _showInviteQRCodeDialog(b64);
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Abbrechen'))
+          ],
+        );
+      }
+    );
+  }
+
+  void _showInviteQRCodeDialog(String base64Data) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Einladungs-Ticket'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Lassen Sie die eingeladene Person diesen Code scannen:'),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: 250,
+              height: 250,
+              child: QrImageView(
+                data: 'digiminuto:invite:$base64Data',
+                version: QrVersions.auto,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fertig'))
+        ],
+      )
     );
   }
 

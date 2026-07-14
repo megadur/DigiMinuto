@@ -5,6 +5,7 @@ import 'package:core_engine/core_engine.dart';
 import 'dart:convert';
 import '../services/app_services.dart';
 import 'package:flutter/services.dart';
+import 'groups_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -191,6 +192,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                   ],
                 ),
+
+              const SizedBox(height: 20),
+
+              // Groups Section
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const GroupsScreen()),
+                    );
+                  },
+                  icon: const Icon(Icons.group),
+                  label: const Text('Meine Gruppen & Einladungen verwalten'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 40),
 

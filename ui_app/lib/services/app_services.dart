@@ -4,6 +4,7 @@ import '../repository/secure_identity_repository.dart';
 import '../repository/sqflite_token_repository.dart';
 import '../repository/sqflite_transaction_repository.dart';
 import '../repository/sqflite_contact_repository.dart';
+import '../repository/sqflite_group_repository.dart';
 
 class AppServices {
   static final AppServices instance = AppServices._internal();
@@ -15,6 +16,7 @@ class AppServices {
   late final SqfliteTokenRepository tokenRepository;
   late final SqfliteTransactionRepository transactionRepository;
   late final SqfliteContactRepository contactRepository;
+  late final SqfliteGroupRepository groupRepository;
   late final LedgerService ledgerService;
   late final NostrService nostrService;
   
@@ -26,6 +28,7 @@ class AppServices {
     tokenRepository = SqfliteTokenRepository();
     transactionRepository = SqfliteTransactionRepository();
     contactRepository = SqfliteContactRepository();
+    groupRepository = SqfliteGroupRepository();
     ledgerService = LedgerService(tokenRepository, transactionRepository, cryptoService);
     nostrService = NostrService();
 
